@@ -356,9 +356,9 @@ const setClaimStatus = async (data, status) => {
     const claim = await Claim.findOne({_id: claimId});
 
     if(status === "approve"){
-        await Claim.updateOne({_id: claimId},{$set: {isApproved: true, status: "approved"}});
+        await Claim.updateOne({_id: claimId},{$set: {isApproved: true, status: "approved", approvedBy: data.message.chat?.username}});
     } else {
-        await Claim.updateOne({_id: claimId},{$set: {isApproved: true, status: "rejected"}});
+        await Claim.updateOne({_id: claimId},{$set: {isApproved: true, status: "rejected", rejectedBy: data.message.chat?.username}});
     }
 
     bot.sendMessage(chatid, `The claim ${claimId} ${status}ed successfully.`);

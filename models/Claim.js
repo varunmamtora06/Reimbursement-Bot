@@ -16,6 +16,11 @@ const ClaimSchema = new mongoose.Schema(
             default: '',
             require: false,
         },
+        rejectedBy: {
+            type: String,
+            default: '',
+            require: false,
+        },
         isApproved: {
             type: Boolean,
             default: false,
