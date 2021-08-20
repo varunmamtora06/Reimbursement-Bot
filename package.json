@@ -9,9 +9,11 @@
   "author": "varun",
   "license": "ISC",
   "dependencies": {
+    "aws-sdk": "^2.965.0",
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
     "mongoose": "^5.13.5",
+    "multer": "^1.4.3",
     "node-telegram-bot-api": "^0.54.0"
   }
 }

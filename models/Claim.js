@@ -38,7 +38,12 @@ const ClaimSchema = new mongoose.Schema(
         claimerChatId: {
             type: Number,
             required: false,
-        }
+        },
+
+        docs: [{
+            type: String,
+            required: false,
+        }]
     },
     { timestamps: true }
 );
