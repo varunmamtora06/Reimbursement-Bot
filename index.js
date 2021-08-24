@@ -7,6 +7,10 @@ const bot = new TelegramBot(token, { polling: true });
 const mongoose = require("mongoose");
 
 
+//Importing controllers
+const { displayClaims, displayClaimsToApprover, setClaimStatus, deleteClaim } = require("./controllers/claimController");
+const { viewDocuments, addDocs, dontAddDoc, addMoreDoc, dontAddMoreDoc } = require("./controllers/documentController");
+
 //Importing Models
 const User = require("./models/User");
 const Claim = require("./models/Claim");
@@ -209,299 +213,6 @@ bot.onText(/\/getclaims/, async (msg) => {
 
 });
 
-const displayClaims =  async (data, status, viewMoreCounter=0) => {
-    const chatid = data.message.chat.id;
-    const username = data.message.chat.username;
-    // await console.log(`username->${username}`);
-    // console.log(`viewMOrCount->${viewMoreCounter}`);
-    // console.log(`viewMOr->${JSON.stringify(data)}`);
-    // let dataArr = data.data.split("+");
-    // console.log(`viewMOrArr->${dataArr}`);
-    let iter = 0;
-
-    const userClaims =  await Claim.find({ claimer: username, status: status }).skip(viewMoreCounter*3).limit(3);
-    // await console.log(`claims->${JSON.stringify(userClaims)}`);
-
-    await userClaims.forEach( async (claim) => {
-        // console.log(`ID: ${claim._id} \n Amount: ${claim.totalAmount} \n Description: ${claim.description} \n Status: ${claim.status}`);
-        const claimDetail = `Claim Reference: ${claim.claimRefId} \nAmount: ${claim.totalAmount} \nDescription: ${claim.description} \nStatus: ${claim.status} \nClaim made on: ${claim.createdAt.getDate()}-${claim.createdAt.getMonth()+1}-${claim.createdAt.getYear()-100+2000} \nNo of Docs: ${claim?.docs?.length ?? "No documents."}`;
-        iter+=1;
-        if(claim.status === "pending"){
-            await bot.sendMessage(chatid, claimDetail, {
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: "🗑 Delete Claim", callback_data: "deleteClaim" },
-                            { text: "📃 View Documents", callback_data: "viewDocuments" },
-                            
-                        ],
-                    ],
-                },
-            });
-        } else {
-            bot.sendMessage(chatid, claimDetail, {
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: "📃 View Documents", callback_data: "viewDocuments" },
-                            
-                        ],
-                    ],
-                },
-            });
-        }
-
-
-    });
-
-    if(userClaims.length > 0 && iter === userClaims.length){
-        setTimeout(()=>{
-            bot.sendMessage(chatid, `To get more claims.`, {
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: "View More", callback_data: `viewMore+${status}+${++viewMoreCounter}`},
-                        ],
-                    ],
-                },
-            })
-        },
-            600
-        );
-    } else {
-        bot.sendMessage(chatid, `No more claims.`);
-    }
-
-};
-
-const deleteClaim = async (data) => {
-    console.log(`delData->${JSON.stringify(data)}`);
-    const chatid = data.message.chat.id;
-    // const claimId = data.message.text.split('\n')[0].slice(4).trim();
-    const claimId = data.data.split("+")[1];
-    console.log(`delClaimID->${claimId}`);
-    
-    await Claim.deleteOne({_id: claimId});
-};
-
-const viewDocuments = async (data) => {
-    const chatId = data.message.chat.id;
-    // const claimId = data.message.text.split('\n')[0].slice(4).trim();
-    const claimId = data.data.split("+")[1];
-
-    const userClaims = await Claim.find({ _id: claimId });
-    if (userClaims.length > 0){
-        await userClaims.forEach(async (claim) => {
-            // console.log(`ID: ${claim._id} \n Amount: ${claim.totalAmount} \n Description: ${claim.description} \n Status: ${claim.status}`);
-            // const claimDetail = `ID: ${claim._id} \n Amount: ${claim.totalAmount} \n Description: ${claim.description} \n Status: ${claim.status} \n No of Docs: ${claim.docs.length}`;
-            if(claim.docs.length > 0){
-                claim.docs.forEach(async (doc) => {
-                    bot.sendPhoto(chatId, doc, {
-                        caption: `By claimer: ${claim.claimer}`
-                    });
-                });
-            } else {
-                bot.sendMessage(chatId, "No documents found.");
-            }
-
-        });
-    } else {
-        bot.sendMessage(chatId, "No claims found.");
-    }
-};
-
-
-const displayClaimsToApprover = async(data, status, viewMoreCounter=0) => {
-    const chatid = data.message.chat.id;
-    const userClaims =  await Claim.find({status: status}).skip(viewMoreCounter*3).limit(3);
-    let iter = 0;
-    
-    userClaims.forEach( (claim) => {
-        // console.log(`ID: ${claim._id} \n Amount: ${claim.totalAmount} \n Description: ${claim.description} \n Status: ${claim.status}`);
-        const claimDetail = `Claim Reference: ${claim.claimRefId} \nAmount: ${claim.totalAmount} \nDescription: ${claim.description} \nStatus: ${claim.status} \nClaimer: ${claim.claimer}\nClaim made on: ${claim.createdAt.getDate()}-${claim.createdAt.getMonth()+1}-${claim.createdAt.getYear()-100+2000} \nNo of Docs: ${claim?.docs?.length ?? "No documents."}`;
-        
-        console.log(`iter->${userClaims.length}`);
-        bot.sendMessage(chatid, claimDetail, {
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: "✔ Approve Claim", callback_data: `approveClaim+${claim._id}` },
-                        { text: "❌ Reject Claim", callback_data: `rejectClaim+${claim._id}` },
-                        { text: "📃 View Documents", callback_data: `viewDocuments+${claim._id}` },
-                    ],
-                ],
-            },
-        });
-        iter+=1;
-    });
-
-    if(userClaims.length > 0 && iter === userClaims.length){
-        setTimeout(()=>{
-            bot.sendMessage(chatid, `To get more claims.`, {
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: "View More", callback_data: `viewMoreApprover+${status}+${++viewMoreCounter}`},
-                        ],
-                    ],
-                },
-            })
-        },
-            600
-        );
-    } else {
-        bot.sendMessage(chatid, `No more claims.`);
-    }
-
-};
-
-const setClaimStatus = async (data, status) => {
-    const chatid = data.message.chat.id;
-    // const claimId = data.message.text.split('\n')[0].slice(4).trim();
-    const claimId = data.data.split("+")[1];
-
-    const claim = await Claim.findOne({_id: claimId});
-
-    if(status === "approve"){
-        await Claim.updateOne({_id: claimId},{$set: {isApproved: true, status: "approved", approvedBy: data.message.chat?.username}});
-    } else {
-        await Claim.updateOne({_id: claimId},{$set: {isApproved: true, status: "rejected", rejectedBy: data.message.chat?.username}});
-    }
-
-    bot.sendMessage(chatid, `The claim ${claimId} ${status}ed successfully.`);
-    await bot.sendMessage(claim.claimerChatId, `The claim ${claimId} ${status}ed successfully.`);
-};
-
-const addDocs = async(data) => {
-    const chatId = data.message.chat.id;
-
-    let isDocs = true;
-    let claimObj = {};
-    let claimDocArr = [];
-    let dataArr = data.data.split("+");
-    claimObj = JSON.parse(dataArr[1]);
-    claimObj.docs = claimDocArr;
-    let resp = "Enter document as a reply to this message.";
-    let replyMsg = await bot.sendMessage(chatId, resp);
-
-    await bot.onReplyToMessage(
-        replyMsg.chat.id,
-        replyMsg.message_id,
-        async (document) => {
-                console.log(`DoccIs->${JSON.stringify(document)}`);
-                claimDocArr.push(document.photo[0].file_id);
-                console.log(`claimDocArr->${claimDocArr}`);
-                claimObj.docs.push(document.photo[0].file_id);
-                console.log(`claimObjs->${JSON.stringify(claimObj)}`);
-                
-
-                const createdClaim = await Claim.create({
-                    description: claimObj.description,
-                    totalAmount: claimObj.totalAmount,
-                    claimer: replyMsg?.chat?.username,
-                    claimerChatId: chatId,
-                    docs: [document.photo[0].file_id]
-                });
-                
-                console.log(`createCl->${JSON.stringify(createdClaim)}`);
-
-                let resp = "Do you have another bill document?";
-                await bot.sendMessage(chatId, resp, {
-                    reply_markup: {
-                        inline_keyboard: [
-                            [
-                                { text: "Yes", callback_data: `addMoreDoc+${createdClaim._id}` },
-                                { text: "No", callback_data: `dontAddMoreDoc` },
-                                // { text: "Yes", callback_data: obzS },
-                                // { text: "No", callback_data: obzS },
-                            ],
-                        ],
-                    },
-                });
-                
-                // bot.sendMessage(chatId, `Your claim is made successfully.\nUse /myclaims to get all of your claims.`);
-            }
-        );
-};
-
-const dontAddDoc = async (data) => {
-    const chatId = data.message.chat.id;
-    let dataArr = data.data.split("+");
-
-    let claimObj = JSON.parse(dataArr[1]);
-
-    console.log(`MadeclaimIZ->${JSON.stringify(claimObj)}`);
-
-    await Claim.create({
-                            description: claimObj.description,
-                            totalAmount: claimObj.totalAmount,
-                            claimer: data?.message?.chat?.username ?? data?.message?.chat?.first_name ?? `${chatId}`,
-                            claimerChatId: chatId
-                        });
-    bot.sendMessage(chatId, `Your claim is made successfully.\nUse /myclaims to get all of your claims.`);
-
-};
-
-const dontAddMoreDoc = async(data) => {
-    const chatId = data.message.chat.id;
-    // console.log(`dont->${JSON.stringify(data)}`);
-    // let dataArr = data.data.split("+");
-    // let claimDocId = JSON.parse(dataArr[1]);
-
-    // await Claim.create({
-    //                 description: claimObj.description,
-    //                 totalAmount: claimObj.totalAmount,
-    //                 claimer: data.message.chat.username,
-    //                 claimerChatId: chatId,
-    //                 docs: claimObj.docs
-    //             });
-    bot.sendMessage(chatId, `Your claim is made successfully.\nUse /myclaims to get all of your claims.`);
-};
-
-const addMoreDoc = async (data) => {
-    const chatId = data.message.chat.id;
-    console.log(`dont->${JSON.stringify(data)}`);
-    let dataArr = data.data.split("+");
-    console.log(`dataarr->${dataArr}`);
-    let claimDocId = dataArr[1];
-
-    let resp = "Add a doc as a response to this message";
-    let replyMsg = await bot.sendMessage(chatId, resp);
-
-    await bot.onReplyToMessage(
-        replyMsg.chat.id,
-        replyMsg.message_id,
-        async (document) => {
-                console.log(`DoccIs->${JSON.stringify(document)}`);
-                // claimDocArr.push(document.photo[0].file_id);
-                // console.log(`claimDocArr->${claimDocArr}`);
-                // claimObj.docs.push(document.photo[0].file_id);
-                // console.log(`claimObjs->${JSON.stringify(claimObj)}`);
-                
-                await Claim.updateOne({_id:claimDocId},{$push:{"docs":document.photo[0].file_id}});
-                
-                
-                // bot.sendMessage(chatId, `Your claim is made successfully.\nUse /myclaims to get all of your claims.`);
-                resp = "Do you have another bill document?";
-                await bot.sendMessage(chatId, resp, {
-                    reply_markup: {
-                        inline_keyboard: [
-                            [
-                                { text: "Yes", callback_data: `addMoreDoc+${claimDocId}` },
-                                { text: "No", callback_data: `dontAddMoreDoc` },
-                                // { text: "Yes", callback_data: obzS },
-                                // { text: "No", callback_data: obzS },
-                            ],
-                        ],
-                    },
-                });
-            }
-        );
-
-    
-
-};
-
 
 bot.on("callback_query", async (data) => {
     // Get the callback data specified
@@ -521,34 +232,34 @@ bot.on("callback_query", async (data) => {
     let queryAnswer = "";
     switch (callback_data) {
         case "approved":
-            displayClaims(data, "approved");
+            displayClaims(data, "approved", 0, bot);
             queryAnswer = "display approved";
             break;
 
         case "pending":
-            displayClaims(data, "pending");
+            displayClaims(data, "pending", 0, bot);
             queryAnswer = "display pending";
             break;
         
         case "rejected":
-            displayClaims(data, "rejected");
+            displayClaims(data, "rejected", 0, bot);
             queryAnswer = "display rejected";
             break;
 
         case "viewMore":
             let dataArray = data.data.split("+");
             console.log(`this more->${dataArray}`)
-            displayClaims(data, dataArray[1], parseInt(dataArray[2]));
+            displayClaims(data, dataArray[1], parseInt(dataArray[2]), bot);
             break;
         
         case "viewMoreApprover":
             let dataArrayApprover = data.data.split("+");
             console.log(`this more->${dataArrayApprover}`)
-            displayClaimsToApprover(data, dataArrayApprover[1], parseInt(dataArrayApprover[2]));
+            displayClaimsToApprover(data, dataArrayApprover[1], parseInt(dataArrayApprover[2]), bot);
             break;
 
         case "addDoc":
-            addDocs(data);
+            addDocs(data, bot);
             queryAnswer = "add more";
             // await Claim.create({
             //                     description: claimObj.description,
@@ -560,51 +271,51 @@ bot.on("callback_query", async (data) => {
             break;
         
         case "dontAddDoc":
-            dontAddDoc(data);
+            dontAddDoc(data, bot);
             queryAnswer = "done";
             break;
 
         case "addMoreDoc":
-            addMoreDoc(data);
+            addMoreDoc(data, bot);
             break;
 
         case "dontAddMoreDoc":
-            dontAddMoreDoc(data);
+            dontAddMoreDoc(data, bot);
             queryAnswer = "done";
             break;
 
         case "deleteClaim":
-            deleteClaim(data);
+            deleteClaim(data, bot);
             queryAnswer = "delete claim";
             break;
         
         case "viewDocuments":
-            viewDocuments(data);
+            viewDocuments(data, bot);
             break;
 
         //For approver
         case "approvedByApprover":
-            displayClaimsToApprover(data, "approved");
+            displayClaimsToApprover(data, "approved", 0, bot);
             queryAnswer = "displaying approved claims";
             break;
 
         case "pendingByApprover":
-            displayClaimsToApprover(data, "pending");
+            displayClaimsToApprover(data, "pending", 0, bot);
             queryAnswer = "displaying pending claims";
             break;
         
         case "rejectedByApprover":
-            displayClaimsToApprover(data, "rejected");
+            displayClaimsToApprover(data, "rejected", 0, bot);
             queryAnswer = "displaying rejected claims";
             break;
 
         case "approveClaim":
-            setClaimStatus(data, "approve");
+            setClaimStatus(data, "approve", bot);
             queryAnswer = "claim approved"
             break;
             
         case "rejectClaim":
-            setClaimStatus(data, "reject");
+            setClaimStatus(data, "reject", bot);
             queryAnswer = "claim rejected"
             break;
     }
