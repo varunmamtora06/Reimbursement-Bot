@@ -2,6 +2,11 @@ const mongoose = require("mongoose");
 
 const ClaimSchema = new mongoose.Schema(
     {
+        claimRefId: {
+            type: String,
+            default: '',
+            require: false,
+        },
         claimTitle: {
             type: String,
             default: '',

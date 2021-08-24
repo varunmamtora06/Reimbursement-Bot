@@ -15,6 +15,9 @@ const Claim = require("./models/Claim");
 const isRegistered = require("./helpers/isRegistered");
 const getUser = require("./helpers/getUser");
 
+//Importing utils
+const refIdGenerator = require("./helpers/utils");
+
 //Creating an express server
 const express = require("express");
 const app = express();
@@ -128,8 +131,9 @@ bot.onText(/\/addclaim/, async (msg) => {
                 replyMsg.message_id,
                 async (amount) => {
                         claimObj.totalAmount = amount.text;
-                        
+                        let id = refIdGenerator();
                         const createdClaim = await Claim.create({
+                            claimRefId: `CL-${id}`,
                             description: claimObj.description,
                             totalAmount: claimObj.totalAmount,
                             claimer: replyMsg?.chat?.username,
@@ -220,7 +224,7 @@ const displayClaims =  async (data, status, viewMoreCounter=0) => {
 
     await userClaims.forEach( async (claim) => {
         // console.log(`ID: ${claim._id} \n Amount: ${claim.totalAmount} \n Description: ${claim.description} \n Status: ${claim.status}`);
-        const claimDetail = `ID: ${claim._id} \n Amount: ${claim.totalAmount} \n Description: ${claim.description} \n Status: ${claim.status} \n Claim made on: ${claim.createdAt.getDate()}-${claim.createdAt.getMonth()+1}-${claim.createdAt.getYear()-100+2000} \n No of Docs: ${claim?.docs?.length ?? "No documents."}`;
+        const claimDetail = `Claim Reference: ${claim.claimRefId} \nAmount: ${claim.totalAmount} \nDescription: ${claim.description} \nStatus: ${claim.status} \nClaim made on: ${claim.createdAt.getDate()}-${claim.createdAt.getMonth()+1}-${claim.createdAt.getYear()-100+2000} \nNo of Docs: ${claim?.docs?.length ?? "No documents."}`;
         iter+=1;
         if(claim.status === "pending"){
             await bot.sendMessage(chatid, claimDetail, {
@@ -273,7 +277,8 @@ const displayClaims =  async (data, status, viewMoreCounter=0) => {
 const deleteClaim = async (data) => {
     console.log(`delData->${JSON.stringify(data)}`);
     const chatid = data.message.chat.id;
-    const claimId = data.message.text.split('\n')[0].slice(4).trim();
+    // const claimId = data.message.text.split('\n')[0].slice(4).trim();
+    const claimId = data.data.split("+")[1];
     console.log(`delClaimID->${claimId}`);
     
     await Claim.deleteOne({_id: claimId});
@@ -281,7 +286,8 @@ const deleteClaim = async (data) => {
 
 const viewDocuments = async (data) => {
     const chatId = data.message.chat.id;
-    const claimId = data.message.text.split('\n')[0].slice(4).trim();
+    // const claimId = data.message.text.split('\n')[0].slice(4).trim();
+    const claimId = data.data.split("+")[1];
 
     const userClaims = await Claim.find({ _id: claimId });
     if (userClaims.length > 0){
@@ -312,16 +318,16 @@ const displayClaimsToApprover = async(data, status, viewMoreCounter=0) => {
     
     userClaims.forEach( (claim) => {
         // console.log(`ID: ${claim._id} \n Amount: ${claim.totalAmount} \n Description: ${claim.description} \n Status: ${claim.status}`);
-        const claimDetail = `ID: ${claim._id} \n Amount: ${claim.totalAmount} \n Description: ${claim.description} \n Status: ${claim.status} \nClaimer: ${claim.claimer}\n Claim made on: ${claim.createdAt.getDate()}-${claim.createdAt.getMonth()+1}-${claim.createdAt.getYear()-100+2000} \n No of Docs: ${claim?.docs?.length ?? "No documents."}`;
+        const claimDetail = `Claim Reference: ${claim.claimRefId} \nAmount: ${claim.totalAmount} \nDescription: ${claim.description} \nStatus: ${claim.status} \nClaimer: ${claim.claimer}\nClaim made on: ${claim.createdAt.getDate()}-${claim.createdAt.getMonth()+1}-${claim.createdAt.getYear()-100+2000} \nNo of Docs: ${claim?.docs?.length ?? "No documents."}`;
         
         console.log(`iter->${userClaims.length}`);
         bot.sendMessage(chatid, claimDetail, {
             reply_markup: {
                 inline_keyboard: [
                     [
-                        { text: "✔ Approve Claim", callback_data: "approveClaim" },
-                        { text: "❌ Reject Claim", callback_data: "rejectClaim" },
-                        { text: "📃 View Documents", callback_data: "viewDocuments" },
+                        { text: "✔ Approve Claim", callback_data: `approveClaim+${claim._id}` },
+                        { text: "❌ Reject Claim", callback_data: `rejectClaim+${claim._id}` },
+                        { text: "📃 View Documents", callback_data: `viewDocuments+${claim._id}` },
                     ],
                 ],
             },
@@ -351,7 +357,8 @@ const displayClaimsToApprover = async(data, status, viewMoreCounter=0) => {
 
 const setClaimStatus = async (data, status) => {
     const chatid = data.message.chat.id;
-    const claimId = data.message.text.split('\n')[0].slice(4).trim();
+    // const claimId = data.message.text.split('\n')[0].slice(4).trim();
+    const claimId = data.data.split("+")[1];
 
     const claim = await Claim.findOne({_id: claimId});
 
