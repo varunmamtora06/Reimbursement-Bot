@@ -11,9 +11,18 @@
 - node-telegram-bot-api.
 
 ## Following are the demo pictures
+1. Claimer adds a claim.
 <div>
-<img src='assets/1.jpeg' width='300'>
-<img src='assets/2.jpeg' width='300'>
-<img src='assets/3.jpeg' width='300'>
-<img src='assets/4.jpeg' width='300'>
+<img src='assets/1.jpg' width='300'>
+<img src='assets/2.jpg' width='300'>
+</div>
+2. Claimer can view their claims according to filters.
+<div>
+<img src='assets/3.jpg' width='300'>
+<img src='assets/4.jpg' width='300'>
+</div>
+3. Approver can view the claims according to filters and can accept or reject them.
+<div>
+<img src='assets/5.jpg' width='300'>
+<img src='assets/6.jpg' width='300'>
 </div>
